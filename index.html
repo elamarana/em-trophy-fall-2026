@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EM Trophy - Fall Tournament</title>
+<style>
+  :root {
+    --bg: #f2f5ee;
+    --panel: #ffffff;
+    --panel2: #edf2e6;
+    --line: #d8e2cd;
+    --accent: #5c9e2f;
+    --accent2: #3a7d44;
+    --text: #1e2b22;
+    --muted: #6d7f6f;
+    --gold: #b58a12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  header {
+    padding: 18px 20px 0; max-width: 1100px; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand img { width: 72px; height: 72px; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: .3px; }
+  h1 .ball { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: .85rem; margin-top: 3px; }
+
+  .team-score {
+    display: flex; gap: 14px; margin: 14px 0 4px; flex-wrap: wrap;
+  }
+  .team-card {
+    flex: 1; min-width: 220px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 16px; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .team-card .tname { font-weight: 700; font-size: 1.05rem; }
+  .team-card .tpts { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+  .team-card .tsub { color: var(--muted); font-size: .72rem; }
+  .team-card.leading { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+  nav {
+    max-width: 1100px; margin: 14px auto 0; padding: 0 20px;
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  nav button.tab {
+    background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+    padding: 8px 16px; border-radius: 999px; font-size: .85rem; cursor: pointer; font-weight: 600;
+  }
+  nav button.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .spacer { flex: 1; }
+  nav .tool {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    padding: 7px 12px; border-radius: 8px; font-size: .78rem; cursor: pointer;
+  }
+  nav .tool:hover { color: var(--text); border-color: var(--muted); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; }
+  section { display: none; }
+  section.active { display: block; }
+
+  h2 { font-size: 1.05rem; margin: 22px 0 10px; color: var(--accent2); text-transform: uppercase; letter-spacing: .6px; }
+  h2:first-child { margin-top: 4px; }
+  .round-label { font-size: .8rem; color: var(--muted); }
+
+  .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+  .match {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .match.done { border-color: var(--line); }
+  .match .mhead { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .match .mtag { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .match .mstatus { font-size: .72rem; font-weight: 700; }
+  .mstatus.win { color: var(--accent); }
+  .mstatus.pend { color: var(--muted); }
+  .mstatus.err { color: #d64545; }
+
+  table.score { width: 100%; border-collapse: collapse; }
+  table.score td, table.score th { padding: 3px 4px; font-size: .85rem; }
+  table.score th { color: var(--muted); font-size: .68rem; font-weight: 600; text-transform: uppercase; text-align: center; }
+  table.score th.name { text-align: left; }
+  table.score td.name { font-weight: 600; font-size: .88rem; white-space: nowrap; }
+  table.score td.name .grp { color: var(--muted); font-weight: 400; font-size: .68rem; margin-left: 5px; }
+  table.score input {
+    width: 44px; padding: 5px 4px; text-align: center; font-size: .9rem;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; color: var(--text);
+  }
+  table.score input:focus { outline: none; border-color: var(--accent); }
+  table.score input:disabled { opacity: .55; }
+  table.score td.pts input { width: 40px; background: transparent; }
+  .tbrow td { color: var(--muted); font-size: .72rem; }
+  .mclear { color: var(--muted); font-size: .68rem; margin-left: 6px; text-decoration: none; }
+  .mclear:hover { color: #d64545; }
+
+  .stwrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .stwrap { grid-template-columns: 1fr; } }
+  table.stand {
+    width: 100%; border-collapse: collapse; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  table.stand th, table.stand td { padding: 8px 6px; font-size: .84rem; text-align: center; }
+  table.stand th {
+    background: var(--panel2); color: var(--muted); font-size: .66rem;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+  table.stand td.name { text-align: left; font-weight: 600; padding-left: 12px; }
+  table.stand tr.q td { background: rgba(92,158,47,.10); }
+  table.stand td.rank { color: var(--accent); font-weight: 800; }
+  table.stand td.tied { color: var(--gold); }
+  .legend { color: var(--muted); font-size: .72rem; margin-top: 8px; line-height: 1.6; }
+
+  .bracket { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .bracket-col h3 { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 4px 0 10px; }
+  .champ-banner {
+    background: linear-gradient(135deg, #fdf6d8, #fffaec); border: 1px solid var(--gold);
+    border-radius: 12px; padding: 14px 18px; text-align: center; margin-top: 10px;
+  }
+  .champ-banner .lbl { color: var(--gold); font-size: .7rem; text-transform: uppercase; letter-spacing: 1px; }
+  .champ-banner .who { font-size: 1.15rem; font-weight: 800; margin-top: 4px; }
+
+  .roster-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .roster-grid { grid-template-columns: 1fr; } }
+  .roster-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .roster-card h2 { padding: 12px 16px; margin: 0; background: var(--panel2); }
+  .roster-card ol { list-style: none; counter-reset: pair; padding: 8px 0; }
+  .roster-card li {
+    counter-increment: pair; padding: 10px 16px; font-weight: 600; font-size: .95rem;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .roster-card li + li { border-top: 1px solid var(--line); }
+  .roster-card li::before {
+    content: counter(pair); background: var(--accent); color: #fff; font-size: .72rem;
+    font-weight: 800; width: 22px; height: 22px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .roster-card li .sep { color: var(--muted); font-weight: 400; }
+
+  .rules h3 { color: var(--accent2); font-size: .95rem; margin: 18px 0 6px; }
+  .rules p, .rules li { font-size: .88rem; color: var(--text); line-height: 1.65; }
+  .rules ul { padding-left: 20px; }
+  .rules table { border-collapse: collapse; margin: 8px 0; }
+  .rules table th, .rules table td { border: 1px solid var(--line); padding: 6px 14px; font-size: .85rem; }
+  .rules table th { background: var(--panel2); color: var(--muted); }
+  .muted { color: var(--muted); }
+
+  #importFile { display: none; }
+  .toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #fff; font-weight: 700; font-size: .82rem;
+    padding: 10px 18px; border-radius: 999px; opacity: 0; transition: opacity .25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="logo.png" alt="EM Trophy logo">
+    <div>
+      <h1>EM Trophy - Fall Tournament</h1>
+      <div class="subtitle">16 league matches · 3/2/1 scoring · Division 1 &amp; 2 playoffs</div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab" data-tab="roster">Roster</button>
+  <button class="tab active" data-tab="fixtures">Fixtures &amp; Scores</button>
+  <button class="tab" data-tab="standings">Standings</button>
+  <button class="tab" data-tab="playoffs">Playoffs</button>
+  <button class="tab" data-tab="rules">Rules</button>
+  <div class="spacer"></div>
+  <button class="tool" id="lockBtn">🔓 Unlocked</button>
+  <button class="tool" id="exportBtn">Export</button>
+  <button class="tool" id="importBtn">Import</button>
+  <button class="tool" id="resetBtn">Clear Scores</button>
+  <input type="file" id="importFile" accept="application/json">
+</nav>
+
+<main>
+  <section id="roster" class="roster"></section>
+  <section id="fixtures" class="active"></section>
+  <section id="standings"></section>
+  <section id="playoffs"></section>
+  <section id="rules" class="rules">
+    <h3>Format</h3>
+    <ul>
+      <li>This is <strong>Group A playing against Group B</strong> — every pair in Group A plays every pair in Group B once: <strong>16 league matches</strong> across 4 rounds.</li>
+      <li>League results seed the playoffs, split into Division 1 (top 2 per group) and Division 2 (bottom 2 per group).</li>
+    </ul>
+    <h3>Match Format</h3>
+    <ul>
+      <li>Best of 2 sets — each set first to 6 games, tiebreak at 6–6.</li>
+      <li>If sets split 1–1 → <strong>10-point match tiebreak</strong> (win by 2) decides the match.</li>
+    </ul>
+    <h3>Scoring</h3>
+    <table>
+      <tr><th>Result</th><th>Winner</th><th>Loser</th></tr>
+      <tr><td>Win 2–0 (straight sets)</td><td>3 pts</td><td>0</td></tr>
+      <tr><td>Win 1–1 via match tiebreak</td><td>2 pts</td><td>1 pt</td></tr>
+    </table>
+    <p class="muted">Every match distributes 3 points. Max 12 points per pair (4 matches).</p>
+    <h3>Standings (within each group)</h3>
+    <ul>
+      <li>1. League points (3/2/1)</li>
+      <li>2. Game difference (games won − games lost, sets only)</li>
+    </ul>
+    <h3>Playoffs</h3>
+    <ul>
+      <li><strong>Division 1:</strong> Ranks 1–2 per group → A1 v B2, A2 v B1 → Championship Final</li>
+      <li><strong>Division 2:</strong> Ranks 3–4 per group → A3 v B4, A4 v B3 → Div 2 Final</li>
+    </ul>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Data ----------
+const GROUP_A = ["Sajin/Peter", "Bala/Vinoth", "Mani/Saravanan", "Aravind/Arunshankar"];
+const GROUP_B = ["Kandy/Paul", "Madhu/Elam", "Vinoth/Manju", "Shankar/Arun"];
+const PAIRS = { A: GROUP_A, B: GROUP_B };
+
+// Each round: [aIdx, bIdx] pairs
+const ROUNDS = [
+  [[0,0],[1,1],[2,2],[3,3]],
+  [[0,1],[1,2],[2,3],[3,0]],
+  [[0,2],[1,3],[2,0],[3,1]],
+  [[0,3],[1,0],[2,1],[3,2]],
+];
+
+// match score: { s: [[aGames,bGames],[aGames,bGames]], tb: [aPts,bPts]|null }
+// tb = match tiebreak points.
+const PLAYOFF_TIES = [
+  { id: "d1sf1", div: 1, label: "SF1", aSeed: {g:"A",r:1}, bSeed: {g:"B",r:2} },
+  { id: "d1sf2", div: 1, label: "SF2", aSeed: {g:"A",r:2}, bSeed: {g:"B",r:1} },
+  { id: "d2sf1", div: 2, label: "SF1", aSeed: {g:"A",r:3}, bSeed: {g:"B",r:4} },
+  { id: "d2sf2", div: 2, label: "SF2", aSeed: {g:"A",r:4}, bSeed: {g:"B",r:3} },
+];
+const PLAYOFF_FINALS = [
+  { id: "d1f", div: 1, label: "Final", feeds: ["d1sf1","d1sf2"] },
+  { id: "d2f", div: 2, label: "Final", feeds: ["d2sf1","d2sf2"] },
+];
+
+// ---------- State ----------
+const LS_KEY = "tennis-league-v1";
+let state = load();
+let locked = false;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { league: {}, playoff: {} };
+}
+function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+function emptyScore() { return { s: [[null,null],[null,null]], tb: [null,null] }; }
+function getLeagueScore(r, i) {
+  const k = `r${r}m${i}`;
+  if (!state.league[k]) state.league[k] = emptyScore();
+  return state.league[k];
+}
+function getPlayoffScore(id) {
+  if (!state.playoff[id]) state.playoff[id] = emptyScore();
+  return state.playoff[id];
+}
+
+// ---------- Score math ----------
+function setOutcome(a, b) {
+  // returns 'a','b' if set complete, 'invalid', or null if not filled
+  if (a === null || b === null || a === "" || b === "") return null;
+  a = +a; b = +b;
+  if (isNaN(a) || isNaN(b) || a === b) return "invalid";
+  const w = Math.max(a,b), l = Math.min(a,b);
+  if (w === 6 && l <= 4) return a > b ? "a" : "b";
+  if (w === 7 && (l === 5 || l === 6)) return a > b ? "a" : "b";
+  return "invalid";
+}
+function tbOutcome(a, b) {
+  if (a === null || b === null || a === "" || b === "") return null;
+  a = +a; b = +b;
+  const w = Math.max(a,b), l = Math.min(a,b);
+  if (w >= 10 && w - l >= 2) return a > b ? "a" : "b";
+  return "invalid";
+}
+// returns { done, winner:'a'|'b', sweep:bool, setsA, setsB, gamesA, gamesB, ptsA, ptsB, err }
+function matchResult(sc) {
+  const o1 = setOutcome(sc.s[0][0], sc.s[0][1]);
+  const o2 = setOutcome(sc.s[1][0], sc.s[1][1]);
+  const res = { done:false, winner:null, sweep:false, setsA:0, setsB:0, gamesA:0, gamesB:0, ptsA:0, ptsB:0, err:null };
+  if (o1 === "invalid" || o2 === "invalid") { res.err = "Invalid set score"; return res; }
+  if (o1) { res.setsA += o1==="a"; res.setsB += o1==="b"; res.gamesA += +sc.s[0][0]; res.gamesB += +sc.s[0][1]; }
+  if (o2) { res.setsA += o2==="a"; res.setsB += o2==="b"; res.gamesA += +sc.s[1][0]; res.gamesB += +sc.s[1][1]; }
+  if (!o1 || !o2) return res; // incomplete
+  if (o1 === o2) {
+    // 2-0 sweep; tiebreak inputs should be empty
+    res.done = true; res.winner = o1; res.sweep = true; return res;
+  }
+  // 1-1 → need match tiebreak
+  const tb = tbOutcome(sc.tb[0], sc.tb[1]);
+  if (tb === "invalid") { res.err = "Invalid match tiebreak"; return res; }
+  if (tb === null) return res; // waiting for tb
+  res.done = true; res.winner = tb; res.sweep = false; return res;
+}
+
+// ---------- Standings ----------
+function computeStats() {
+  const stats = { A: GROUP_A.map(() => fresh()), B: GROUP_B.map(() => fresh()) };
+  function fresh() { return { pl:0, sweeps:0, tbw:0, tbl:0, pts:0, gW:0, gL:0 }; }
+  ROUNDS.forEach((round, r) => {
+    round.forEach(([ai, bi], i) => {
+      const sc = state.league[`r${r}m${i}`];
+      if (!sc) return;
+      const m = matchResult(sc);
+      if (!m.done) return;
+      const A = stats.A[ai], B = stats.B[bi];
+      A.pl++; B.pl++;
+      A.gW += m.gamesA; A.gL += m.gamesB; B.gW += m.gamesB; B.gL += m.gamesA;
+      if (m.winner === "a") {
+        if (m.sweep) { A.sweeps++; A.pts += 3; } else { A.tbw++; A.pts += 2; B.tbl++; B.pts += 1; }
+      } else {
+        if (m.sweep) { B.sweeps++; B.pts += 3; } else { B.tbw++; B.pts += 2; A.tbl++; A.pts += 1; }
+      }
+    });
+  });
+  return stats;
+}
+// sorted indexes for a group, returns {order:[idx...], tied:Set}
+function rankGroup(arr) {
+  const idx = arr.map((_,i) => i);
+  idx.sort((x, y) => {
+    const A = arr[x], B = arr[y];
+    if (B.pts !== A.pts) return B.pts - A.pts;
+    return (B.gW - B.gL) - (A.gW - A.gL);
+  });
+  // mark full ties
+  const tied = new Set();
+  for (let i = 0; i < idx.length - 1; i++) {
+    const A = arr[idx[i]], B = arr[idx[i+1]];
+    if (A.pts === B.pts && (A.gW - A.gL) === (B.gW - B.gL)) {
+      tied.add(idx[i]); tied.add(idx[i+1]);
+    }
+  }
+  return { order: idx, tied };
+}
+
+// ---------- Render ----------
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function num(v) { return v === null || v === undefined ? "" : v; }
+
+function scoreCard(sc, key, nameA, nameB, groupTagA, groupTagB) {
+  const m = matchResult(sc);
+  let status, cls;
+  if (m.err) { status = m.err; cls = "err"; }
+  else if (m.done) {
+    const wName = m.winner === "a" ? nameA : nameB;
+    status = `${wName} wins (${m.sweep ? "+3" : m.winner==="a" ? "+2/+1" : "+2/+1"})`;
+    cls = "win";
+  } else if (sc.s[0][0] !== null && sc.s[0][0] !== "" ) { status = "In progress"; cls = "pend"; }
+  else { status = "Not played"; cls = "pend"; }
+
+  const needsTB = m.setsA === 1 && m.setsB === 1;
+  const tbStyle = needsTB ? "" : 'style="opacity:.4"';
+  const dis = locked ? "disabled" : "";
+
+  const hasData = sc.s.flat().concat(sc.tb).some(v => v !== null && v !== "");
+  const clearBtn = (!locked && hasData) ? ` <a href="#" class="mclear" data-clear="${key}">clear</a>` : "";
+
+  return `
+  <div class="match ${m.done ? "done":""}">
+    <div class="mhead"><span class="mtag">${esc(key)}${clearBtn}</span><span class="mstatus ${cls}">${esc(status)}</span></div>
+    <table class="score">
+      <tr><th class="name"></th><th>S1</th><th>S2</th><th>MTB</th></tr>
+      <tr>
+        <td class="name">${esc(nameA)}<span class="grp">${groupTagA||""}</span></td>
+        <td><input ${dis} data-k="${key}" data-f="s00" value="${num(sc.s[0][0])}" inputmode="numeric"></td>
+        <td><input ${dis} data-k="${key}" data-f="s10" value="${num(sc.s[1][0])}" inputmode="numeric"></td>
+        <td><input ${dis} data-k="${key}" data-f="tb0" value="${num(sc.tb[0])}" inputmode="numeric" ${tbStyle}></td>
+      </tr>
+      <tr>
+        <td class="name">${esc(nameB)}<span class="grp">${groupTagB||""}</span></td>
+        <td><input ${dis} data-k="${key}" data-f="s01" value="${num(sc.s[0][1])}" inputmode="numeric"></td>
+        <td><input ${dis} data-k="${key}" data-f="s11" value="${num(sc.s[1][1])}" inputmode="numeric"></td>
+        <td><input ${dis} data-k="${key}" data-f="tb1" value="${num(sc.tb[1])}" inputmode="numeric" ${tbStyle}></td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function renderFixtures() {
+  let html = "";
+  ROUNDS.forEach((round, r) => {
+    html += `<h2>Round ${r+1} <span class="round-label">· days window ${["1–10","15–25","29–39","43–50"][r]}</span></h2><div class="match-grid">`;
+    round.forEach(([ai, bi], i) => {
+      const k = `r${r}m${i}`;
+      html += scoreCard(getLeagueScore(r, i), k, GROUP_A[ai], GROUP_B[bi], "A", "B");
+    });
+    html += `</div>`;
+  });
+  document.getElementById("fixtures").innerHTML = html;
+}
+
+function renderStandings() {
+  const stats = computeStats();
+  let html = `<div class="stwrap">`;
+  ["A","B"].forEach(g => {
+    const { order, tied } = rankGroup(stats[g]);
+    html += `<div><h2>Group ${g} Standings</h2>
+    <table class="stand">
+      <tr><th>#</th><th style="text-align:left;padding-left:12px">Pair</th><th>W</th><th>L</th><th>Pts</th><th>GW</th><th>GL</th><th>Diff</th></tr>`;
+    order.forEach((pi, rank) => {
+      const s = stats[g][pi];
+      const q = rank < 2 ? ' class="q"' : "";
+      const t = tied.has(pi) ? ' tied' : '';
+      const w = s.sweeps + s.tbw;
+      html += `<tr${q}>
+        <td class="rank${t}">${rank+1}${tied.has(pi)?"*":""}</td>
+        <td class="name">${esc(PAIRS[g][pi])}</td>
+        <td>${w}</td><td>${s.pl - w}</td>
+        <td><strong>${s.pts}</strong></td>
+        <td>${s.gW}</td><td>${s.gL}</td>
+        <td>${s.gW - s.gL > 0 ? "+" : ""}${s.gW - s.gL}</td>
+      </tr>`;
+    });
+    html += `</table></div>`;
+  });
+  html += `</div>
+  <div class="legend">
+    Green rows = Division 1 qualification (ranks 1–2). Ranks 3–4 go to Division 2.<br>
+    Sorted by: League pts → Game diff. &nbsp;* = fully tied (resolve manually).
+  </div>`;
+  document.getElementById("standings").innerHTML = html;
+}
+
+function seedName(stats, g, rank1) {
+  const { order } = rankGroup(stats[g]);
+  return PAIRS[g][order[rank1 - 1]];
+}
+function renderPlayoffs() {
+  const stats = computeStats();
+  let html = `<div class="bracket">`;
+  [1, 2].forEach(div => {
+    html += `<div class="bracket-col"><h3>${div === 1 ? "🏆 Division 1" : "Division 2"}</h3><div class="match-grid">`;
+    PLAYOFF_TIES.filter(t => t.div === div).forEach(t => {
+      const na = seedName(stats, t.aSeed.g, t.aSeed.r);
+      const nb = seedName(stats, t.bSeed.g, t.bSeed.r);
+      html += scoreCard(getPlayoffScore(t.id), t.id, na, nb, `${t.aSeed.g}${t.aSeed.r}`, `${t.bSeed.g}${t.bSeed.r}`);
+    });
+    PLAYOFF_FINALS.filter(f => f.div === div).forEach(f => {
+      // winners of feeders
+      const names = f.feeds.map(fid => {
+        const sc = state.playoff[fid];
+        if (!sc) return "TBD";
+        const m = matchResult(sc);
+        if (!m.done) return "TBD";
+        const tie = PLAYOFF_TIES.find(t => t.id === fid);
+        const na = seedName(stats, tie.aSeed.g, tie.aSeed.r);
+        const nb = seedName(stats, tie.bSeed.g, tie.bSeed.r);
+        return m.winner === "a" ? na : nb;
+      });
+      html += scoreCard(getPlayoffScore(f.id), f.id, names[0], names[1], "W·SF1", "W·SF2");
+      const fm = matchResult(getPlayoffScore(f.id));
+      if (fm.done && names[0] !== "TBD" && names[1] !== "TBD") {
+        const champ = fm.winner === "a" ? names[0] : names[1];
+        html += `<div class="champ-banner"><div class="lbl">${div === 1 ? "Champion" : "Div 2 Champion"}</div><div class="who">🏆 ${esc(champ)}</div></div>`;
+      }
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById("playoffs").innerHTML = html;
+}
+
+function renderRoster() {
+  let html = `<div class="roster-grid">`;
+  ["A","B"].forEach(g => {
+    html += `<div class="roster-card"><h2>Group ${g}</h2><ol>`;
+    PAIRS[g].forEach(pair => {
+      const [p1, p2] = pair.split("/");
+      html += `<li>${esc(p1)} <span class="sep">/</span> ${esc(p2)}</li>`;
+    });
+    html += `</ol></div>`;
+  });
+  html += `</div>`;
+  document.getElementById("roster").innerHTML = html;
+}
+
+function renderTeamScore() {
+  // team score cards removed
+}
+
+function renderAll() { renderRoster(); renderFixtures(); renderStandings(); renderPlayoffs(); }
+
+// ---------- Events ----------
+function setField(sc, f, v) {
+  const val = v === "" ? null : Math.max(0, parseInt(v, 10) || 0);
+  switch (f) {
+    case "s00": sc.s[0][0] = val; break; case "s01": sc.s[0][1] = val; break;
+    case "s10": sc.s[1][0] = val; break; case "s11": sc.s[1][1] = val; break;
+    case "tb0": sc.tb[0] = val; break;  case "tb1": sc.tb[1] = val; break;
+  }
+}
+
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.k) return;
+  const k = el.dataset.k, f = el.dataset.f;
+  const sc = k.startsWith("r") ? state.league[k] : state.playoff[k];
+  if (!sc) return;
+  setField(sc, f, el.value);
+  save();
+  renderAll();
+});
+
+document.querySelectorAll("nav .tab").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("nav .tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll("main section").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    document.getElementById(b.dataset.tab).classList.add("active");
+  });
+});
+
+const lockBtn = document.getElementById("lockBtn");
+lockBtn.addEventListener("click", () => {
+  locked = !locked;
+  lockBtn.textContent = locked ? "🔒 Locked" : "🔓 Unlocked";
+  renderAll();
+});
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tennis-league-scores.json";
+  a.click();
+  toast("Scores exported");
+});
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      state = JSON.parse(rd.result);
+      save(); renderAll(); toast("Scores imported");
+    } catch (err) { toast("Import failed"); }
+  };
+  rd.readAsText(file);
+  e.target.value = "";
+});
+document.addEventListener("click", e => {
+  const c = e.target.closest(".mclear");
+  if (!c) return;
+  e.preventDefault();
+  const k = c.dataset.clear;
+  if (k.startsWith("r")) state.league[k] = emptyScore();
+  else state.playoff[k] = emptyScore();
+  save(); renderAll();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Clear ALL scores? This cannot be undone.")) {
+    state = { league: {}, playoff: {} };
+    save(); renderAll(); toast("All scores cleared");
+  }
+});
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+renderAll();
+</script>
+</body>
+</html>
