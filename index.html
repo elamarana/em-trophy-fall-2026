@@ -350,6 +350,41 @@ const PLAYOFF_FINALS = [
   { id: "d2f", div: 2, label: "Final", feeds: ["d2sf1","d2sf2"] },
 ];
 
+// ---------- Cloud sync (Pantry — getpantry.cloud) ----------
+// Create a free pantry at https://getpantry.cloud and paste the ID here.
+const PANTRY_ID = "15f6af7d-359f-4d80-94ed-dfbb8241b767";
+const PANTRY_URL = PANTRY_ID
+  ? `https://getpantry.cloud/apiv1/pantry/${PANTRY_ID}/basket/em-trophy`
+  : null;
+let dirty = false;
+let pushTimer = null;
+
+async function pushState() {
+  if (!PANTRY_URL) return;
+  try {
+    await fetch(PANTRY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+    });
+    dirty = false;
+  } catch (e) {}
+}
+
+async function pullState(force) {
+  if (!PANTRY_URL || (dirty && !force)) return;
+  try {
+    const res = await fetch(PANTRY_URL, { cache: "no-store" });
+    if (!res.ok) { pushState(); return; } // empty basket → publish local state
+    const remote = await res.json();
+    if (remote && JSON.stringify(remote) !== JSON.stringify(state)) {
+      state = remote;
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      renderAll();
+    }
+  } catch (e) {}
+}
+
 // ---------- State ----------
 const LS_KEY = "tennis-league-v1";
 let state = load();
@@ -362,7 +397,13 @@ function load() {
   } catch (e) {}
   return { league: {}, playoff: {} };
 }
-function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  if (!PANTRY_URL) return;
+  dirty = true;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushState, 400);
+}
 
 function emptyScore() { return { s: [[null,null],[null,null]], tb: [null,null] }; }
 function getLeagueScore(r, i) {
@@ -783,6 +824,13 @@ document.getElementById("resetBtn").addEventListener("click", () => {
     state = { league: {}, playoff: {}, contrib: state.contrib };
     save(); renderAll(); toast("All scores cleared");
   }
+});
+
+// ---------- Sync lifecycle ----------
+pullState(true);
+setInterval(() => pullState(false), 15000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) pullState(false);
 });
 
 let toastTimer;
