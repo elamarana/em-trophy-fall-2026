@@ -192,6 +192,59 @@
   .rules table th { background: var(--panel2); color: var(--muted); }
   .muted { color: var(--muted); }
 
+  .contrib-summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px; margin-bottom: 16px;
+  }
+  .cstat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .cstat .clbl {
+    font-size: .66rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .6px; font-weight: 600;
+  }
+  .cstat .cval { font-size: 1.3rem; font-weight: 700; margin-top: 4px; }
+  .cstat .cval.good { color: var(--win); }
+  .cstat .cval input.camnt {
+    width: 62px; font-size: 1.05rem; font-weight: 700; text-align: left;
+    padding: 2px 6px; margin-left: 2px;
+  }
+  .cbar {
+    grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .cbar .clbl { font-size: .76rem; color: var(--muted); font-weight: 600; }
+  .cbar .track { height: 8px; background: #e8eefb; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .cbar .fill { height: 100%; background: var(--win); border-radius: 999px; transition: width .3s; }
+  .cbar .fill.spent { background: #c0392b; }
+  .expadd {
+    display: block; margin: 12px 16px 14px; padding: 7px 14px; font-size: .78rem;
+    font-weight: 600; color: var(--muted); background: transparent;
+    border: 1px dashed var(--line); border-radius: 8px; cursor: pointer; width: calc(100% - 32px);
+    transition: all .15s;
+  }
+  .expadd:hover { color: var(--text); border-color: var(--muted); }
+  .exprm { color: var(--muted); font-size: .8rem; text-decoration: none; }
+  .exprm:hover { color: #c0392b; }
+  .cval.neg { color: #c0392b; }
+  .camnt {
+    width: 76px; padding: 6px 8px; text-align: right; font-size: .86rem;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; color: var(--text);
+  }
+  .cnote {
+    width: 100%; min-width: 120px; padding: 6px 8px; font-size: .82rem;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; color: var(--text);
+  }
+  .camnt:focus, .cnote:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(27,77,228,.15);
+  }
+  .camnt:disabled, .cnote:disabled { opacity: .55; }
+  input.cpaid { width: 16px; height: 16px; accent-color: var(--win); }
+  table.stand tr.paid td { background: rgba(21,128,61,.05); }
+  table.stand tr.paid td:first-child { box-shadow: inset 3px 0 0 var(--win); }
+  .tag-b { color: var(--muted); font-weight: 400; font-size: .66rem; margin-left: 5px; }
+
   #importFile { display: none; }
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -221,6 +274,7 @@
     <button class="tab" data-tab="standings">Standings</button>
     <button class="tab" data-tab="playoffs">Playoffs</button>
     <button class="tab" data-tab="rules">Rules</button>
+    <button class="tab" data-tab="contribute">Contributions</button>
     <div class="spacer"></div>
     <button class="tool" id="lockBtn">🔓 Unlocked</button>
     <button class="tool" id="exportBtn">Export</button>
@@ -235,6 +289,7 @@
   <section id="fixtures" class="active"></section>
   <section id="standings"></section>
   <section id="playoffs"></section>
+  <section id="contribute"></section>
   <section id="rules" class="rules">
     <h3>Format</h3>
     <ul>
@@ -318,6 +373,22 @@ function getLeagueScore(r, i) {
 function getPlayoffScore(id) {
   if (!state.playoff[id]) state.playoff[id] = emptyScore();
   return state.playoff[id];
+}
+function contrib() {
+  if (!state.contrib) state.contrib = { perPlayer: 10, rows: {} };
+  if (state.contrib.perPlayer === undefined) {
+    state.contrib.perPlayer = Math.round((state.contrib.perPair || 20) / 2) || 10;
+    delete state.contrib.perPair;
+  }
+  if (!Array.isArray(state.contrib.expenses)) {
+    state.contrib.expenses = [{ name: "Tennis balls — 20-pack cans", cost: 63 }];
+  }
+  return state.contrib;
+}
+function crow(key) {
+  const c = contrib();
+  if (!c.rows[key]) c.rows[key] = { amt: null, paid: false, note: "" };
+  return c.rows[key];
 }
 
 // ---------- Score math ----------
@@ -541,11 +612,71 @@ function renderRoster() {
   document.getElementById("roster").innerHTML = html;
 }
 
+function renderContribute() {
+  const c = contrib();
+  const all = [];
+  ["A","B"].forEach(g => PAIRS[g].forEach(pair => {
+    pair.split("/").forEach(name => all.push({ key: pair + "::" + name.trim(), name: name.trim(), pair, g }));
+  }));
+  const target = c.perPlayer * all.length;
+  const collected = all.reduce((sum, p) => sum + (+crow(p.key).amt || 0), 0);
+  const paidCount = all.filter(p => crow(p.key).paid).length;
+  const expenses = c.expenses.reduce((sum, e) => sum + (+e.cost || 0), 0);
+  const balance = collected - expenses;
+  const pct = target > 0 ? Math.min(100, Math.round(collected / target * 100)) : 0;
+  const spentPct = collected > 0 ? Math.min(100, Math.round(expenses / collected * 100)) : (expenses > 0 ? 100 : 0);
+  const dis = locked ? "disabled" : "";
+
+  let html = `<div class="contrib-summary">
+    <div class="cstat"><div class="clbl">Collected</div><div class="cval good">$${collected}</div></div>
+    <div class="cstat"><div class="clbl">Target / player</div>
+      <div class="cval">$<input class="camnt" data-ctype="perPlayer" value="${num(c.perPlayer)}" inputmode="numeric" ${dis}></div></div>
+    <div class="cstat"><div class="clbl">Fund target</div><div class="cval">$${target}</div></div>
+    <div class="cstat"><div class="clbl">Players paid</div><div class="cval">${paidCount} / ${all.length}</div></div>
+    <div class="cstat"><div class="clbl">Expenses</div><div class="cval">$${expenses}</div></div>
+    <div class="cstat"><div class="clbl">Balance</div><div class="cval${balance < 0 ? " neg" : " good"}">$${balance}</div></div>
+    <div class="cbar"><div class="clbl">${pct}% of fund target collected — $${Math.max(0, target - collected)} remaining</div>
+      <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="clbl" style="margin-top:10px">$${expenses} spent — $${balance} left in the pot</div>
+      <div class="track"><div class="fill spent" style="width:${spentPct}%"></div></div></div>
+  </div>
+  <div class="module"><div class="mod-head">Contributions <span>green = paid in full</span></div>
+    <table class="stand">
+      <tr><th class="name">Player</th><th>Group</th><th>Amount</th><th>Paid</th><th class="name">Note</th></tr>`;
+  all.forEach(p => {
+    const r = crow(p.key);
+    html += `<tr${r.paid ? ' class="paid"' : ""}>
+      <td class="name"><span class="pn">${esc(p.name)}<span class="tag-b">${esc(p.pair)}</span></span></td>
+      <td style="text-align:center">${p.g}</td>
+      <td><input class="camnt" data-ctype="amt" data-cplayer="${esc(p.key)}" value="${num(r.amt)}" inputmode="numeric" placeholder="${num(c.perPlayer)}" ${dis}></td>
+      <td style="text-align:center"><input type="checkbox" class="cpaid" data-ctype="paid" data-cplayer="${esc(p.key)}" ${r.paid ? "checked" : ""} ${dis}></td>
+      <td><input class="cnote" data-ctype="note" data-cplayer="${esc(p.key)}" value="${esc(r.note)}" placeholder="e.g. Zelle, cash…" ${dis}></td>
+    </tr>`;
+  });
+  html += `</table></div>
+  <div class="module" style="margin-top:16px"><div class="mod-head">Expenses <span>what the fund was spent on</span></div>
+    <table class="stand">
+      <tr><th class="name">Item</th><th>Cost</th><th></th></tr>`;
+  c.expenses.forEach((e, i) => {
+    html += `<tr>
+      <td class="name"><input class="cnote" data-ctype="expname" data-cidx="${i}" value="${esc(e.name)}" placeholder="Item description" ${dis}></td>
+      <td><input class="camnt" data-ctype="expcost" data-cidx="${i}" value="${num(e.cost)}" inputmode="numeric" placeholder="0" ${dis}></td>
+      <td style="text-align:center">${locked ? "" : `<a href="#" class="exprm" data-crmi="${i}">✕</a>`}</td>
+    </tr>`;
+  });
+  html += `</table>${locked ? "" : '<button class="expadd" data-cadd>+ Add expense</button>'}</div>
+  <div class="legend">
+    Contributions cover the trophy, court bookings, balls, and refreshments.<br>
+    Pay to the organizer via cash or Zelle. Tick <strong>Paid</strong> once a player's full contribution is received; use Note for payment method or partial amounts.
+  </div>`;
+  document.getElementById("contribute").innerHTML = html;
+}
+
 function renderTeamScore() {
   // team score cards removed
 }
 
-function renderAll() { renderRoster(); renderFixtures(); renderStandings(); renderPlayoffs(); }
+function renderAll() { renderRoster(); renderFixtures(); renderStandings(); renderPlayoffs(); renderContribute(); }
 
 // ---------- Events ----------
 function setField(sc, f, v) {
@@ -566,6 +697,27 @@ document.addEventListener("change", e => {
   setField(sc, f, el.value);
   save();
   renderAll();
+});
+
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.ctype) return;
+  const c = contrib();
+  if (el.dataset.ctype === "perPlayer") {
+    c.perPlayer = Math.max(0, parseInt(el.value, 10) || 0);
+  } else if (el.dataset.ctype === "expname" || el.dataset.ctype === "expcost") {
+    const e = c.expenses[+el.dataset.cidx];
+    if (!e) return;
+    if (el.dataset.ctype === "expname") e.name = el.value;
+    else e.cost = el.value === "" ? null : Math.max(0, parseInt(el.value, 10) || 0);
+  } else {
+    const r = crow(el.dataset.cplayer);
+    if (el.dataset.ctype === "amt") r.amt = el.value === "" ? null : Math.max(0, parseInt(el.value, 10) || 0);
+    else if (el.dataset.ctype === "paid") r.paid = el.checked;
+    else if (el.dataset.ctype === "note") r.note = el.value;
+  }
+  save();
+  renderContribute();
 });
 
 document.querySelectorAll("nav .tab").forEach(b => {
@@ -607,6 +759,16 @@ document.getElementById("importFile").addEventListener("change", e => {
   e.target.value = "";
 });
 document.addEventListener("click", e => {
+  const t = e.target.closest("[data-cadd],[data-crmi]");
+  if (!t) return;
+  e.preventDefault();
+  const c = contrib();
+  if (t.dataset.cadd !== undefined) c.expenses.push({ name: "", cost: null });
+  else c.expenses.splice(+t.dataset.crmi, 1);
+  save(); renderContribute();
+});
+
+document.addEventListener("click", e => {
   const c = e.target.closest(".mclear");
   if (!c) return;
   e.preventDefault();
@@ -618,7 +780,7 @@ document.addEventListener("click", e => {
 
 document.getElementById("resetBtn").addEventListener("click", () => {
   if (confirm("Clear ALL scores? This cannot be undone.")) {
-    state = { league: {}, playoff: {} };
+    state = { league: {}, playoff: {}, contrib: state.contrib };
     save(); renderAll(); toast("All scores cleared");
   }
 });
